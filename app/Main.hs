@@ -1,6 +1,6 @@
 module Main where
 
-import Parts
+import Domain.Parts
 
 main :: IO ()
 main = undefined
