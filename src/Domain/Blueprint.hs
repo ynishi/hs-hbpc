@@ -8,8 +8,10 @@ module Domain.Blueprint
   , Component(..)
   , Device(..)
   , link
+  , makeDevice
   , near
   , sumPrice
+  , unlink
   ) where
 
 import           Control.Lens hiding (element)
@@ -53,6 +55,18 @@ link hub1 hub2 = (hub1', hub2')
     hub1' = append hub1 hub2
     hub2' = append hub2 hub1
 
+-- |
+-- unlink
+-- >>> unlink (Hub "hub1" [Hub "hub2" []]) (Hub "hub2" [Hub "hub1" []])
+-- (Hub "hub1" [],Hub "hub2" [])
+unlink hub1 hub2 = (hub1', hub2')
+  where
+    remove End _ = End
+    remove (Hub name cs) (Hub name2 _) =
+      Hub name $ filter (\(Hub n _) -> n /= name2) cs
+    hub1' = remove hub1 hub2
+    hub2' = remove hub2 hub1
+
 type Id = String
 
 type Price = Int
@@ -69,6 +83,33 @@ data Device
   deriving (Eq, Show)
 
 makeLenses ''Device
+
+-- |
+-- makeDevice
+-- >>> makeDevice
+-- Device {_deviceId = "", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = []}
+makeDevice :: Device
+makeDevice =
+  Device
+    { _deviceId = ""
+    , _devicePrice = 0
+    , _deviceProductName = ""
+    , _deviceDesc = ""
+    , _deviceContains = []
+    }
+
+-- |
+-- duplicate
+-- >>> duplicate (makeDevice {_deviceId = "device"}) ""
+-- Device {_deviceId = "device-1", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = []}
+duplicate :: Device -> String -> Device
+duplicate DefaultDevice _ = DefaultDevice
+duplicate device id = device {_deviceId = newId}
+  where
+    newId =
+      if id /= ""
+        then id
+        else (++ "-1") . _deviceId $ device
 
 -- |
 -- sum of price

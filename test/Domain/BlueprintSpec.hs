@@ -42,6 +42,8 @@ spec = do
         } `shouldBe`
         Device "productId" 10000 "productName" "Desc" [DefaultDevice]
     it "init DefaultDevice" $ do DefaultDevice `shouldBe` DefaultDevice
+    it "makeDevice return Device with field val" $ do
+      makeDevice `shouldBe` Device "" 0 "" "" []
     it "sumPrice return sum of all price" $ do
       let inner1 = Device {_devicePrice = 10000, _deviceContains = []}
       let inner2 = Device {_devicePrice = 20000, _deviceContains = [inner1]}
