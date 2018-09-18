@@ -5,6 +5,8 @@ module Domain.BlueprintSpec
 import           Domain.Blueprint
 import           Test.Hspec
 
+import qualified Algebra.Graph    as AG
+
 spec :: Spec
 spec = do
   describe "blueprint" $ do
@@ -14,8 +16,13 @@ spec = do
         , _bpTitle = "bp title"
         , _bpDesc = "bp desc"
         , _bpComponents = []
+        , _bpGraph = AG.empty
         } `shouldBe`
-        Blueprint "blueprint" "bp title" "bp desc" []
+        Blueprint "blueprint" "bp title" "bp desc" [] AG.empty
+    it "add device to _bpGraph" $ do
+      let bp = makeBlueprint
+      let device = makeDevice
+      _bpGraph (addDeviceToBp device bp) `shouldBe` (AG.vertex device)
   describe "component" $ do
     it "init Hub" $ do Hub "hub1" [End] `shouldBe` Hub "hub1" [End]
     it "init End" $ do End `shouldBe` End

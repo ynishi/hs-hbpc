@@ -7,21 +7,40 @@ module Domain.Blueprint
   , Components(..)
   , Component(..)
   , Device(..)
+  , addDeviceToBp
   , link
+  , makeBlueprint
   , makeDevice
   , near
   , sumPrice
   , unlink
   ) where
 
-import           Control.Lens hiding (element)
+import qualified Algebra.Graph as AG
+import           Control.Lens  hiding (element)
 
 data Blueprint = Blueprint
   { _bpName       :: Name
   , _bpTitle      :: String
   , _bpDesc       :: String
   , _bpComponents :: Components
+  , _bpGraph      :: AG.Graph Device
   } deriving (Eq, Show)
+
+makeBlueprint =
+  Blueprint
+    { _bpName = ""
+    , _bpTitle = ""
+    , _bpDesc = ""
+    , _bpComponents = []
+    , _bpGraph = AG.empty
+    }
+
+addDeviceToBp :: Device -> Blueprint -> Blueprint
+addDeviceToBp device bp = bp {_bpGraph = added}
+  where
+    graph = AG.vertex device
+    added = AG.overlay graph (_bpGraph bp)
 
 type Components = [Component]
 
@@ -34,7 +53,7 @@ data Component
   | HubDevice Name
               Device
               Components
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 name (Hub name _) = name
 name End          = show End
@@ -80,7 +99,7 @@ data Device
            , _deviceDesc        :: String
            , _deviceContains    :: Devices }
   | DefaultDevice
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 makeLenses ''Device
 
