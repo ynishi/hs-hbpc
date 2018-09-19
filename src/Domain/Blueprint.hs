@@ -6,28 +6,35 @@ module Domain.Blueprint
   ( Blueprint(..)
   , Components(..)
   , Component(..)
-  , Device(..)
   , addDeviceToBp
   , link
-  , makeBlueprint
-  , makeDevice
+  , defaultBlueprint
+  , empty
   , near
-  , sumPrice
   , unlink
+  , bpTitle
+  , bpName
+  , bpDesc
+  , bpComponents
+  , bpGraph
   ) where
 
 import qualified Algebra.Graph as AG
-import           Control.Lens  hiding (element)
+import qualified Control.Lens  as CL
+import qualified Domain.Device as DD
 
-data Blueprint = Blueprint
-  { _bpName       :: Name
-  , _bpTitle      :: String
-  , _bpDesc       :: String
-  , _bpComponents :: Components
-  , _bpGraph      :: AG.Graph Device
-  } deriving (Eq, Show)
+data Blueprint
+  = Empty
+  | Blueprint { _bpName       :: Name
+              , _bpTitle      :: String
+              , _bpDesc       :: String
+              , _bpComponents :: Components
+              , _bpGraph      :: AG.Graph DD.Device }
+  deriving (Eq, Show)
 
-makeBlueprint =
+empty = Empty
+
+defaultBlueprint =
   Blueprint
     { _bpName = ""
     , _bpTitle = ""
@@ -36,7 +43,7 @@ makeBlueprint =
     , _bpGraph = AG.empty
     }
 
-addDeviceToBp :: Device -> Blueprint -> Blueprint
+addDeviceToBp :: DD.Device -> Blueprint -> Blueprint
 addDeviceToBp device bp = bp {_bpGraph = added}
   where
     graph = AG.vertex device
@@ -44,16 +51,16 @@ addDeviceToBp device bp = bp {_bpGraph = added}
 
 type Components = [Component]
 
-type Name = String
-
 data Component
   = End
   | Hub Name
         Components
   | HubDevice Name
-              Device
+              DD.Device
               Components
   deriving (Eq, Ord, Show)
+
+type Name = String
 
 name (Hub name _) = name
 name End          = show End
@@ -86,57 +93,4 @@ unlink hub1 hub2 = (hub1', hub2')
     hub1' = remove hub1 hub2
     hub2' = remove hub2 hub1
 
-type Id = String
-
-type Price = Int
-
-type Devices = [Device]
-
-data Device
-  = Device { _deviceId          :: Id
-           , _devicePrice       :: Price
-           , _deviceProductName :: Name
-           , _deviceDesc        :: String
-           , _deviceContains    :: Devices }
-  | DefaultDevice
-  deriving (Eq, Ord, Show)
-
-makeLenses ''Device
-
--- |
--- makeDevice
--- >>> makeDevice
--- Device {_deviceId = "", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = []}
-makeDevice :: Device
-makeDevice =
-  Device
-    { _deviceId = ""
-    , _devicePrice = 0
-    , _deviceProductName = ""
-    , _deviceDesc = ""
-    , _deviceContains = []
-    }
-
--- |
--- duplicate
--- >>> duplicate (makeDevice {_deviceId = "device"}) ""
--- Device {_deviceId = "device-1", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = []}
-duplicate :: Device -> String -> Device
-duplicate DefaultDevice _ = DefaultDevice
-duplicate device id = device {_deviceId = newId}
-  where
-    newId =
-      if id /= ""
-        then id
-        else (++ "-1") . _deviceId $ device
-
--- |
--- sum of price
--- >>> sumPrice DefaultDevice
--- 0
--- >>> sumPrice (Device {_deviceId = "", _devicePrice = 1, _deviceProductName = "", _deviceDesc = "", _deviceContains = [DefaultDevice] })
--- 1
-sumPrice :: Device -> Price
-sumPrice DefaultDevice = 0
-sumPrice Device {_devicePrice = n, _deviceContains = cs} =
-  (+ n) . sum . map sumPrice $ cs
+CL.makeLenses ''Blueprint

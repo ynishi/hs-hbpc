@@ -5,12 +5,15 @@ module Domain.BlueprintSpec
 import           Domain.Blueprint
 import           Test.Hspec
 
+import           Domain.Device
+
 import qualified Algebra.Graph    as AG
+import           Control.Lens     ((^.), (^?))
 
 spec :: Spec
 spec = do
-  describe "blueprint" $ do
-    it "init Blueprint" $ do
+  describe "Blueprint" $ do
+    it "is be able to initialize" $ do
       Blueprint
         { _bpName = "blueprint"
         , _bpTitle = "bp title"
@@ -19,10 +22,27 @@ spec = do
         , _bpGraph = AG.empty
         } `shouldBe`
         Blueprint "blueprint" "bp title" "bp desc" [] AG.empty
+  describe "defaultBlueprint" $ do
+    it "returns default value" $ do
+      defaultBlueprint `shouldBe` Blueprint "" "" "" [] AG.empty
+  describe "addDeviceToBp" $ do
     it "add device to _bpGraph" $ do
-      let bp = makeBlueprint
-      let device = makeDevice
+      let bp = defaultBlueprint
+      let device = defaultDevice
       _bpGraph (addDeviceToBp device bp) `shouldBe` (AG.vertex device)
+  describe "lens getter" $ do
+    describe "bpName" $ do
+      it "view _bpName" $ do defaultBlueprint ^. bpName `shouldBe` ""
+    describe "bpTitle" $ do
+      it "view _bpTitle" $ do defaultBlueprint ^. bpTitle `shouldBe` ""
+    describe "bpDesc" $ do
+      it "view _bpDesc" $ do defaultBlueprint ^. bpDesc `shouldBe` ""
+    describe "bpComponents" $ do
+      it "view _bpComponents" $ do
+        defaultBlueprint ^. bpComponents `shouldBe` []
+    describe "bpGraph" $ do
+      it "preview _bpGraph" $ do
+        defaultBlueprint ^? bpGraph `shouldBe` Just AG.empty
   describe "component" $ do
     it "init Hub" $ do Hub "hub1" [End] `shouldBe` Hub "hub1" [End]
     it "init End" $ do End `shouldBe` End
@@ -38,23 +58,3 @@ spec = do
       let hub2 = Hub "hub2" []
       let (hub1', _) = link hub1 hub2
       near hub1' `shouldBe` [Hub "hub2" []]
-  describe "device" $ do
-    it "init Device" $ do
-      Device
-        { _deviceId = "productId"
-        , _devicePrice = 10000
-        , _deviceProductName = "productName"
-        , _deviceDesc = "Desc"
-        , _deviceContains = [DefaultDevice]
-        } `shouldBe`
-        Device "productId" 10000 "productName" "Desc" [DefaultDevice]
-    it "init DefaultDevice" $ do DefaultDevice `shouldBe` DefaultDevice
-    it "makeDevice return Device with field val" $ do
-      makeDevice `shouldBe` Device "" 0 "" "" []
-    it "sumPrice return sum of all price" $ do
-      let inner1 = Device {_devicePrice = 10000, _deviceContains = []}
-      let inner2 = Device {_devicePrice = 20000, _deviceContains = [inner1]}
-      let device = Device {_devicePrice = 30000, _deviceContains = [inner2]}
-      sumPrice device `shouldBe` 60000
-    it "sumPrice with DefaultDevice return 0" $ do
-      sumPrice DefaultDevice `shouldBe` 0
