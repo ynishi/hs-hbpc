@@ -17,11 +17,12 @@ spec = do
         , _deviceProductName = "productName"
         , _deviceDesc = "Desc"
         , _deviceContains = [DefaultDevice]
+        , _deviceIfaces = ["tcpip"]
         } `shouldBe`
-        Device "productId" 10000 "productName" "Desc" [DefaultDevice]
+        Device "productId" 10000 "productName" "Desc" [DefaultDevice] ["tcpip"]
     it "init DefaultDevice" $ do DefaultDevice `shouldBe` DefaultDevice
     it "defaultDevice return Blueprint with default value" $ do
-      defaultDevice `shouldBe` Device "" 0 "" "" []
+      defaultDevice `shouldBe` Device "" 0 "" "" [] []
     it "sumPrice return sum of all price" $ do
       let inner1 = Device {_devicePrice = 10000, _deviceContains = []}
       let inner2 = Device {_devicePrice = 20000, _deviceContains = [inner1]}

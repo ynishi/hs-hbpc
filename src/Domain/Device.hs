@@ -8,7 +8,13 @@ module Domain.Device
   , Name
   , Devices(..)
   , Device(..)
+  , deviceId
+  , devicePrice
+  , deviceProductName
+  , deviceDesc
+  , deviceContains
   , defaultDevice
+  , deviceIfaces
   , sumPrice
   ) where
 
@@ -27,7 +33,8 @@ data Device
            , _devicePrice       :: Price
            , _deviceProductName :: Name
            , _deviceDesc        :: String
-           , _deviceContains    :: Devices }
+           , _deviceContains    :: Devices
+           , _deviceIfaces      :: [String] }
   | DefaultDevice
   deriving (Eq, Ord, Show)
 
@@ -45,6 +52,7 @@ defaultDevice =
     , _deviceProductName = ""
     , _deviceDesc = ""
     , _deviceContains = []
+    , _deviceIfaces = []
     }
 
 -- |
