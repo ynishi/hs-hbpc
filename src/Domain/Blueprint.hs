@@ -7,20 +7,19 @@ module Domain.Blueprint
   , Components(..)
   , Component(..)
   , addDevice
-  , addDeviceToBp
-  , link
-  , defaultBlueprint
-  , empty
-  , near
-  , unlink
-  , bpTitle
-  , bpName
+  , bpComponents
   , bpDesc
   , bpDevices
-  , bpComponents
   , bpGraph
-  , bpTCPIP
+  , bpName
   , bpProtocols
+  , bpTCPIP
+  , bpTitle
+  , defaultBlueprint
+  , empty
+  , link
+  , near
+  , unlink
   ) where
 
 import qualified Algebra.Graph   as AG
@@ -28,18 +27,18 @@ import qualified Control.Lens    as CL
 import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set        as Set
-import qualified Domain.Device   as DD
+import qualified Domain.Device   as D
 
 data Blueprint
   = Empty
   | Blueprint { _bpName       :: Name
               , _bpTitle      :: String
               , _bpDesc       :: String
-              , _bpDevices    :: Set.Set DD.Device
+              , _bpDevices    :: Set.Set D.Device
               , _bpComponents :: [Components]
-              , _bpGraph      :: AG.Graph DD.Device
-              , _bpTCPIP      :: AG.Graph DD.Device
-              , _bpProtocols  :: Map.Map String (AG.Graph DD.Device) }
+              , _bpGraph      :: AG.Graph D.Device
+              , _bpTCPIP      :: AG.Graph D.Device
+              , _bpProtocols  :: Map.Map String (AG.Graph D.Device) }
   deriving (Eq, Show)
 
 type Name = String
@@ -51,7 +50,7 @@ data Component
   | Hub Name
         Components
   | HubDevice Name
-              DD.Device
+              D.Device
               Components
   deriving (Eq, Ord, Show)
 
@@ -71,24 +70,21 @@ defaultBlueprint =
     , _bpProtocols = Map.empty
     }
 
-addDevice :: DD.Device -> Blueprint -> Blueprint
+addDevice :: D.Device -> Blueprint -> Blueprint
 addDevice device =
   (bpDevices CL.%~ Set.insert device) .
   (bpGraph CL.%~ AG.overlay (AG.vertex device)) .
   (bpTCPIP CL.%~
    (\x ->
-      if hasTCPIP device
+      if D.hasTCPIP device
         then AG.overlay (AG.vertex device) x
-        else x))
-
-hasTCPIP :: DD.Device -> Bool
-hasTCPIP device = List.elem "tcpip" $ device CL.^. DD.deviceIfaces
-
-addDeviceToBp :: DD.Device -> Blueprint -> Blueprint
-addDeviceToBp device bp = bp {_bpGraph = added}
-  where
-    graph = AG.vertex device
-    added = AG.overlay graph (_bpGraph bp)
+        else x)) .
+  (bpProtocols CL.%~
+   Map.mapWithKey
+     (\k v ->
+        if D.hasProtocol k device
+          then AG.overlay (AG.vertex device) v
+          else v))
 
 name (Hub name _) = name
 name End          = show End

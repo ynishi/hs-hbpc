@@ -15,10 +15,13 @@ module Domain.Device
   , deviceContains
   , defaultDevice
   , deviceIfaces
+  , hasProtocol
+  , hasTCPIP
   , sumPrice
   ) where
 
 import           Control.Lens hiding (element)
+import qualified Data.List    as List
 
 type Id = String
 
@@ -78,3 +81,15 @@ sumPrice :: Device -> Price
 sumPrice DefaultDevice = 0
 sumPrice Device {_devicePrice = n, _deviceContains = cs} =
   (+ n) . sum . map sumPrice $ cs
+
+-- |
+-- has TCPIP
+-- >>> hasTCPIP DefaultDevice
+-- False
+-- >>> hasTCPIP DefaultDevice {_deviceIfaces = ["tcpip"]}
+-- True
+hasTCPIP :: Device -> Bool
+hasTCPIP = hasProtocol "tcpip"
+
+hasProtocol :: String -> Device -> Bool
+hasProtocol protocol device = List.elem protocol $ device ^. deviceIfaces
