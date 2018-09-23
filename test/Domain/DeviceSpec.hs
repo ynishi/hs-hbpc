@@ -6,7 +6,7 @@ import           Domain.Device
 import           Test.Hspec
 
 import qualified Algebra.Graph as AG
-import           Control.Lens     ((.~), (&))
+import           Control.Lens  ((&), (.~))
 
 spec :: Spec
 spec =
@@ -26,8 +26,12 @@ spec =
       defaultDevice `shouldBe` Device "" 0 "" "" [] []
     it "sumPrice return sum of all price" $ do
       let inner1 = defaultDevice & devicePrice .~ 10000
-      let inner2 = defaultDevice & (devicePrice .~ 20000) . (deviceContains .~ [inner1])
-      let device = defaultDevice & (devicePrice .~ 30000) . (deviceContains .~ [inner2])
+      let inner2 =
+            defaultDevice &
+            (devicePrice .~ 20000) . (deviceContains .~ [inner1])
+      let device =
+            defaultDevice &
+            (devicePrice .~ 30000) . (deviceContains .~ [inner2])
       sumPrice device `shouldBe` 60000
     it "sumPrice with DefaultDevice return 0" $
       sumPrice DefaultDevice `shouldBe` 0

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS -Wall -Werror -fno-warn-unused-binds #-}
 
 module Domain.Usecase
   ( Req(..)
@@ -13,14 +14,9 @@ module Domain.Usecase
   , createBlueprint
   ) where
 
-import qualified Algebra.Graph          as AG
-import           Control.Concurrent
-import           Control.Concurrent.STM
-import qualified Control.Lens           as CL
-import           Control.Monad.IO.Class
-import           Control.Monad.STM
-import qualified Domain.Blueprint       as B
-import qualified Domain.Device          as D
+import qualified Control.Lens     as CL
+import qualified Domain.Blueprint as B
+import qualified Domain.Device    as D
 
 -- for controller
 data Req
@@ -40,7 +36,9 @@ data Res
 CL.makeLenses ''Req
 
 createBlueprint :: (Store a) => a -> Req -> IO Res
-createBlueprint st (CreateBlueprintReq title name devices) = do
+createBlueprint _ Req = return Res
+createBlueprint _ (CreateDeviceReq _ _) = return Res
+createBlueprint st (CreateBlueprintReq _ _ devices) = do
   let blueprint = B.defaultBlueprint
   isExists <- mapM (isExistsDevice st . fromDeviceName) devices
   if and isExists
@@ -53,7 +51,9 @@ createBlueprint st (CreateBlueprintReq title name devices) = do
     else return . CreateBlueprintRes . Left $ "NG"
 
 registDevice :: (Store a) => a -> Req -> IO Res
-registDevice st (CreateDeviceReq title name) = do
+registDevice _ Req = return Res
+registDevice _ CreateBlueprintReq {} = return Res
+registDevice st (CreateDeviceReq _ _) = do
   isExists <- isExistsDevice st DeviceDataS
   if isExists
     then return $ CreateDeviceRes . Right $ "Exists"
@@ -65,27 +65,22 @@ registDevice st (CreateDeviceReq title name) = do
 data DataS
   = BlueprintDataS
   | DeviceDataS
+  deriving (Eq)
 
 fromDeviceDataS :: DataS -> D.Device
-fromDeviceDataS ds = D.defaultDevice
+fromDeviceDataS _ = D.defaultDevice
 
 fromBlueprint :: B.Blueprint -> DataS
-fromBlueprint bp = BlueprintDataS
+fromBlueprint _ = BlueprintDataS
 
 fromDeviceName :: D.Name -> DataS
-fromDeviceName d = DeviceDataS
+fromDeviceName _ = DeviceDataS
 
 class Store a where
   store :: a -> DataS -> IO ()
-  store _ _ = return ()
   storeDevice :: a -> DataS -> IO ()
-  storeDevice _ _ = return ()
   saveBlueprint :: a -> DataS -> IO ()
-  saveBlueprint _ _ = return ()
   fetchAll :: a -> IO [DataS]
-  fetchAll _ = return []
   fetchDeviceBy :: a -> D.Name -> IO DataS
-  fetchDeviceBy _ _ = return DeviceDataS
   fetchDeviceIn :: a -> [D.Name] -> IO [DataS]
-  fetchDeviceIn _ _ = return []
   isExistsDevice :: a -> DataS -> IO Bool

@@ -25,6 +25,11 @@ dependencies:
 - algebraic-graphs
 - containers
 - stm
+- servant-server
+- aeson
+- text
+- wai
+- warp
 
 library:
   source-dirs: src

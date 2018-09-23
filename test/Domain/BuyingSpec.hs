@@ -8,7 +8,7 @@ import           Test.Hspec
 import           Domain.Device
 
 import qualified Algebra.Graph as AG
-import Control.Lens ((.~), (&))
+import           Control.Lens  ((&), (.~))
 
 spec :: Spec
 spec = do
@@ -29,7 +29,5 @@ spec = do
     context "when with buyings" $
       it "sum buyingPrice" $ do
         let bs =
-              map
-                (defaultBuying &)
-                [buyingPrice .~ 1000, buyingPrice .~ 2000]
+              map (defaultBuying &) [buyingPrice .~ 1000, buyingPrice .~ 2000]
         estimate bs `shouldBe` 3000
