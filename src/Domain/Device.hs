@@ -20,7 +20,7 @@ module Domain.Device
   , sumPrice
   ) where
 
-import           Control.Lens hiding (element)
+import qualified Control.Lens as CL
 import qualified Data.List    as List
 
 type Id = String
@@ -41,12 +41,12 @@ data Device
   | DefaultDevice
   deriving (Eq, Ord, Show)
 
-makeLenses ''Device
+CL.makeLenses ''Device
 
 -- |
 -- defaultDevice
 -- >>> defaultDevice
--- Device {_deviceId = "", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = []}
+-- Device {_deviceId = "", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = [], _deviceIfaces = []}
 defaultDevice :: Device
 defaultDevice =
   Device
@@ -60,8 +60,8 @@ defaultDevice =
 
 -- |
 -- duplicate
--- >>> duplicate (makeDevice {_deviceId = "device"}) ""
--- Device {_deviceId = "device-1", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = []}
+-- >>> duplicate (defaultDevice CL.& deviceId CL..~  "device") ""
+-- Device {_deviceId = "device-1", _devicePrice = 0, _deviceProductName = "", _deviceDesc = "", _deviceContains = [], _deviceIfaces = []}
 duplicate :: Device -> String -> Device
 duplicate DefaultDevice _ = DefaultDevice
 duplicate device id = device {_deviceId = newId}
@@ -73,9 +73,9 @@ duplicate device id = device {_deviceId = newId}
 
 -- |
 -- sum of price
--- >>> sumPrice DefaultDevice
+-- >>> sumPrice defaultDevice
 -- 0
--- >>> sumPrice (Device {_deviceId = "", _devicePrice = 1, _deviceProductName = "", _deviceDesc = "", _deviceContains = [DefaultDevice] })
+-- >>> sumPrice $ defaultDevice CL.& devicePrice CL..~ 1
 -- 1
 sumPrice :: Device -> Price
 sumPrice DefaultDevice = 0
@@ -84,12 +84,12 @@ sumPrice Device {_devicePrice = n, _deviceContains = cs} =
 
 -- |
 -- has TCPIP
--- >>> hasTCPIP DefaultDevice
+-- >>> hasTCPIP defaultDevice
 -- False
--- >>> hasTCPIP DefaultDevice {_deviceIfaces = ["tcpip"]}
+-- >>> hasTCPIP $ defaultDevice CL.& deviceIfaces CL..~ ["tcpip"]
 -- True
 hasTCPIP :: Device -> Bool
 hasTCPIP = hasProtocol "tcpip"
 
 hasProtocol :: String -> Device -> Bool
-hasProtocol protocol device = List.elem protocol $ device ^. deviceIfaces
+hasProtocol protocol device = List.elem protocol $ device CL.^. deviceIfaces

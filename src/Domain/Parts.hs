@@ -55,14 +55,14 @@ class Sum a where
 
 -- |
 -- Impl sum price of Parts
--- >>> Parts.sum [Part CPU 10000 $ Store "", Part Disk 5000 $ Store ""]
+-- >>> Domain.Parts.sum [Part CPU 10000 $ Store "", Part Disk 5000 $ Store ""]
 -- 15000
 instance Sum Parts where
   sum = Prelude.sum . map price
 
 -- |
 -- Impl sum price of Computer
--- >>> Parts.sum $ Computer PC [Part CPU 10000 $ Store "", Part Disk 5000 $ Store ""] []
+-- >>> Domain.Parts.sum $ Computer PC [Part CPU 10000 $ Store "", Part Disk 5000 $ Store ""] []
 -- 15000
 instance Sum Computer where
   sum = Domain.Parts.sum . parts
@@ -70,6 +70,6 @@ instance Sum Computer where
 -- |
 -- A function uniq Store from Computer
 -- >>> uniqStores $ Computer PC [Part CPU 10000 $ Store "", Part Disk 5000 $ Store "shop.example.com"] [Store "example.shop.com"]
--- [Store "example.shop.com"]
+-- [Store "example.shop.com",Store "",Store "shop.example.com"]
 uniqStores :: Computer -> Stores
 uniqStores c = nub $ stores c ++ map store (parts c)
