@@ -4,6 +4,7 @@
 
 module DataAdapter.TVar
   ( TVarStore(..)
+  , defaultTVarStore
   ) where
 
 import qualified Control.Concurrent.STM as CCSTM
@@ -27,3 +28,8 @@ instance U.Store TVarStore where
   saveBlueprint _ _ = return ()
   fetchDeviceIn _ _ = return []
   fetchDeviceBy _ _ = return U.DeviceDataS
+
+defaultTVarStore :: IO TVarStore
+defaultTVarStore = do
+  tVar <- atomically $ CCSTM.newTVar []
+  return $ TVarStore tVar

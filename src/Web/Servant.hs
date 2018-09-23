@@ -13,7 +13,6 @@ module Web.Servant
   , startDefaultApp
   ) where
 
-import           Control.Concurrent.STM
 import           Control.Monad.IO.Class
 import           Data.Aeson
 import           Data.Aeson.TH
@@ -43,13 +42,12 @@ type API
    = Get '[ PlainText] String :<|> "blueprints" :> "all" :> Get '[ JSON] U.Res :<|> "blueprints" :> ReqBody '[ JSON] Req :> Post '[ JSON] U.Res
 
 startDefaultApp :: IO ()
-startDefaultApp = startApp 8080
+startDefaultApp = do
+  db <- DT.defaultTVarStore
+  startApp db 8080
 
-startApp :: Int -> IO ()
-startApp port = do
-  tVar <- atomically $ newTVar []
-  let db = DT.TVarStore tVar
-  run port $ app db
+startApp :: (U.Store a) => a -> Int -> IO ()
+startApp db port = run port $ app db
 
 app :: (U.Store a) => a -> Application
 app db = serve api (server db)
@@ -58,8 +56,8 @@ api :: Proxy API
 api = Proxy
 
 server :: (U.Store a) => a -> Server API
-server db = hello :<|> todoAll :<|> todoPost
+server db = hello :<|> blueprints :<|> blueprintPost
   where
     hello = return "Hello"
-    todoAll = liftIO $ U.createBlueprint db U.Req
-    todoPost req = liftIO $ U.createBlueprint db (fromReq req)
+    blueprints = liftIO $ U.createBlueprint db U.Req
+    blueprintPost req = liftIO $ U.createBlueprint db (fromReq req)
