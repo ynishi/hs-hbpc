@@ -21,6 +21,21 @@ description:         Please see the README on GitHub at <https://github.com/ynis
 
 dependencies:
 - base >= 4.7 && < 5
+- lens
+- algebraic-graphs
+- containers
+- stm
+- servant-server
+- aeson
+- text
+- wai
+- warp
+- persistent
+- persistent-template
+- persistent-mysql
+- resourcet
+- monad-logger
+- transformers
 
 library:
   source-dirs: src

@@ -1,2 +1,3 @@
-import Test.DocTest
-main = doctest ["-isrc", "src/Parts.hs"]
+import           Test.DocTest
+
+main = doctest ["-isrc", "src"]

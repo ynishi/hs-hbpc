@@ -63,3 +63,11 @@ packages:
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+
+image:
+  containers:
+    -
+      base: "ubuntu"
+      name: "ynishi/hs-hbpc"
+      entrypoints:
+        - hs-hbpc-exe

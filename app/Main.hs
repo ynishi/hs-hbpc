@@ -1,6 +1,6 @@
 module Main where
 
-import Parts
+import qualified  Web.Servant as WS
 
 main :: IO ()
-main = undefined
+main = WS.startDefaultApp
