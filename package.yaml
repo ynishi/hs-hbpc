@@ -30,6 +30,12 @@ dependencies:
 - text
 - wai
 - warp
+- persistent
+- persistent-template
+- persistent-mysql
+- resourcet
+- monad-logger
+- transformers
 
 library:
   source-dirs: src
