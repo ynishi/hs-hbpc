@@ -36,6 +36,7 @@ dependencies:
 - resourcet
 - monad-logger
 - transformers
+- safe-exceptions
 
 library:
   source-dirs: src
