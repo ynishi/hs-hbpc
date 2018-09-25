@@ -47,7 +47,7 @@ instance U.Store MysqlStore where
   storeDevice _ _ = return ()
   storeBlueprint _ _ = return ()
   fetchDeviceIn _ _ = return []
-  fetchDeviceBy _ _ = return U.DeviceDataS
+  fetchDeviceByName _ _ = return []
 
 defaultConnectInfo :: ConnectInfo
 defaultConnectInfo =

@@ -14,9 +14,16 @@ module Domain.Usecase
   , CreateNewBlueprintRes(..)
   , AddBlueprintRes(..)
   , AddBlueprintReq(..)
+  , AddDeviceToBlueprintRes(..)
+  , AddDeviceToBlueprintReq(..)
   , LoadBlueprintRes(..)
   , LoadBlueprintReq(..)
   , LoadBlueprintResData(..)
+  , LoadDeviceRes(..)
+  , LoadDeviceReq(..)
+  , LoadDeviceResData(..)
+  , RegistDeviceRes(..)
+  , RegistDeviceReq(..)
   , SaveBlueprintRes(..)
   , SaveBlueprintReq(..)
   , USException(..)
@@ -28,6 +35,9 @@ module Domain.Usecase
   , addBlueprint
   , loadBlueprint
   , saveBlueprint
+  , loadDevice
+  , registDevice
+  , addDeviceToBlueprint
   ) where
 
 import qualified Control.Exception.Safe as CES
@@ -63,10 +73,25 @@ newtype LoadBlueprintReq = LoadBlueprintReq
   { _lbrName :: String
   }
 
+newtype LoadDeviceReq = LoadDeviceReq
+  { _ldrName :: String
+  }
+
+data RegistDeviceReq = RegistDeviceReq
+  { _rdrName  :: String
+  , _rdrTitle :: String
+  , _rdrDesc  :: String
+  }
+
 data SaveBlueprintReq = SaveBlueprintReq
   { _sbrName  :: String
   , _sbrTitle :: String
   , _sbrDesc  :: String
+  }
+
+data AddDeviceToBlueprintReq = AddDeviceToBlueprintReq
+  { _adtbrDeviceName    :: String
+  , _adtbrBlueprintName :: String
   }
 
 newtype CreateNewBlueprintRes = CreateNewBlueprintRes
@@ -81,8 +106,20 @@ newtype LoadBlueprintRes =
   LoadBlueprintRes (Either String LoadBlueprintResData)
   deriving (Show, Eq)
 
+newtype LoadDeviceRes =
+  LoadDeviceRes (Either String LoadDeviceResData)
+  deriving (Show, Eq)
+
+newtype RegistDeviceRes =
+  RegistDeviceRes (Either String String)
+  deriving (Show, Eq)
+
 newtype SaveBlueprintRes =
   SaveBlueprintRes (Either String String)
+  deriving (Show, Eq)
+
+newtype AddDeviceToBlueprintRes =
+  AddDeviceToBlueprintRes (Either String String)
   deriving (Show, Eq)
 
 data LoadBlueprintResData
@@ -90,6 +127,13 @@ data LoadBlueprintResData
   | LoadBlueprintResData { _lbrdName  :: String
                          , _lbrdTitle :: String
                          , _lbrdDesc  :: String }
+  deriving (Show, Eq)
+
+data LoadDeviceResData
+  = LoadDeviceResDataEmpty
+  | LoadDeviceResData { _ldrdName  :: String
+                      , _ldrdTitle :: String
+                      , _ldrdDesc  :: String }
   deriving (Show, Eq)
 
 data Res
@@ -168,6 +212,15 @@ saveBlueprint db req = do
       (B.bpDesc CL..~ desc)
     blueprintDataS = fromBlueprint blueprint
 
+loadDevice :: (Store a) => a -> LoadDeviceReq -> IO LoadDeviceRes
+loadDevice db req = do
+  fetched <- fetchDeviceByName db name
+  case fetched of
+    []  -> return . LoadDeviceRes . Left $ "load:" ++ name
+    bps -> return . LoadDeviceRes . Right . head . map fromDataSToLDRD $ bps
+  where
+    name = _ldrName req
+
 createBlueprint :: (Store a) => a -> Req -> IO Res
 createBlueprint _ Req = return Res
 createBlueprint _ (CreateDeviceReq _ _) = return Res
@@ -183,16 +236,45 @@ createBlueprint st (CreateBlueprintReq _ _ devices) = do
       return . CreateBlueprintRes . Right $ "OK"
     else return . CreateBlueprintRes . Left $ "NG"
 
-registDevice :: (Store a) => a -> Req -> IO Res
-registDevice _ Req = return Res
-registDevice _ CreateBlueprintReq {} = return Res
-registDevice st (CreateDeviceReq _ _) = do
-  isExists <- isExistsDevice st DeviceDataS
-  if isExists
-    then return $ CreateDeviceRes . Right $ "Exists"
-    else do
-      storeDevice st DeviceDataS
-      return $ CreateDeviceRes . Left $ "OK"
+registDevice :: (Store a) => a -> RegistDeviceReq -> IO RegistDeviceRes
+registDevice st (RegistDeviceReq name title desc) = do
+  result <- fetchDeviceByName st name
+  case result of
+    [] -> do
+      storeDevice st $ DeviceDataS name title desc
+      return . RegistDeviceRes . Right $ "OK"
+    _ -> return . RegistDeviceRes . Left $ "Exists:" ++ name
+
+addDeviceToBlueprint ::
+     (Store a) => a -> AddDeviceToBlueprintReq -> IO AddDeviceToBlueprintRes
+addDeviceToBlueprint st (AddDeviceToBlueprintReq deviceName blueprintName) = do
+  resultDevice <- fetchDeviceByName st deviceName
+  resultBlueprint <- fetchBlueprintByName st blueprintName
+  case resultDevice of
+    [] ->
+      return . AddDeviceToBlueprintRes . Left $ "not found device:" ++
+      deviceName
+    (deviceRes:_) ->
+      case resultBlueprint of
+        Nothing ->
+          return . AddDeviceToBlueprintRes . Left $ "not found bp:" ++
+          blueprintName
+        Just [] ->
+          return . AddDeviceToBlueprintRes . Left $ "not found bp:" ++
+          blueprintName
+        Just (blueprintRes:_) -> do
+          let deviceInstance = fromDeviceDataS deviceRes
+          let blueprintInstance = fromBlueprintDataS blueprintRes
+          let blueprint' = B.addDevice deviceInstance blueprintInstance
+          let blueprintDataS' = fromBlueprint blueprint'
+          resultUpdate <- CES.try $ updateBlueprint st blueprintDataS'
+          case resultUpdate of
+            Left (_ :: USException) ->
+              return . AddDeviceToBlueprintRes . Left $ "update err:bp:" ++
+              blueprintName
+            Right _ ->
+              return . AddDeviceToBlueprintRes . Right $ deviceName ++ ":" ++
+              blueprintName
 
 -- for Data store
 data DataS
@@ -200,10 +282,15 @@ data DataS
   | BlueprintDataS { _bpdsName  :: String
                    , _bpdsTitle :: String
                    , _bpdsDesc  :: String }
-  | DeviceDataS
+  | DeviceDataS { _ddsName  :: String
+                , _ddsTitle :: String
+                , _ddsDesc  :: String }
   deriving (Show, Eq)
 
 -- CL.makeLenses ''DataS
+defaultDeviceDataS :: DataS
+defaultDeviceDataS = DeviceDataS {_ddsName = "", _ddsTitle = "", _ddsDesc = ""}
+
 fromDeviceDataS :: DataS -> D.Device
 fromDeviceDataS _ = D.defaultDevice
 
@@ -215,13 +302,26 @@ fromBlueprint blueprint =
     , _bpdsDesc = blueprint CL.^. B.bpDesc
     }
 
+fromBlueprintDataS :: DataS -> B.Blueprint
+fromBlueprintDataS dataS =
+  B.defaultBlueprint
+    { B._bpName = _bpdsName dataS
+    , B._bpTitle = _bpdsTitle dataS
+    , B._bpDesc = _bpdsDesc dataS
+    }
+
 fromDeviceName :: D.Name -> DataS
-fromDeviceName _ = DeviceDataS
+fromDeviceName name = defaultDeviceDataS {_ddsName = name}
 
 fromDataS :: DataS -> LoadBlueprintResData
 fromDataS (BlueprintDataS name title desc) =
   LoadBlueprintResData name title desc
 fromDataS _ = LoadBlueprintResDataEmpty
+
+fromDataSToLDRD :: DataS -> LoadDeviceResData
+fromDataSToLDRD (DeviceDataS name title desc) =
+  LoadDeviceResData name title desc
+fromDataSToLDRD _ = LoadDeviceResDataEmpty
 
 class Store a where
   store :: a -> DataS -> IO ()
@@ -230,7 +330,7 @@ class Store a where
   insertBlueprint :: a -> DataS -> IO ()
   updateBlueprint :: a -> DataS -> IO ()
   fetchAll :: a -> IO [DataS]
-  fetchDeviceBy :: a -> D.Name -> IO DataS
+  fetchDeviceByName :: a -> D.Name -> IO [DataS]
   fetchDeviceIn :: a -> [D.Name] -> IO [DataS]
   fetchBlueprintBy :: a -> DataS -> IO (Maybe [DataS])
   fetchBlueprintByName :: a -> String -> IO (Maybe [DataS])

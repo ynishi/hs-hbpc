@@ -48,10 +48,16 @@ instance U.Store TVarStore where
                            (U._bpdsDesc ds)
                     else U.BlueprintDataS name title desc
                 U.DefaultBlueprintDataS -> U.DefaultBlueprintDataS
-                U.DeviceDataS -> U.DeviceDataS)
+                U.DeviceDataS name title desc -> U.DeviceDataS name title desc)
       else CES.throw $ U.InsertException "updateError"
   fetchDeviceIn _ _ = return []
-  fetchDeviceBy _ _ = return U.DeviceDataS
+  fetchDeviceByName (TVarStore db) name = do
+    dataSs <- CCSTM.readTVarIO db
+    return . filter byName $ dataSs
+    where
+      byName :: U.DataS -> Bool
+      byName (U.DeviceDataS dName _ _) = dName == name
+      byName _                         = False
   fetchBlueprintBy (TVarStore db) ds = do
     dataSs <- CCSTM.readTVarIO db
     return . wrap $ filter (== ds) dataSs
@@ -63,9 +69,8 @@ instance U.Store TVarStore where
     return . wrap $ filter byName dataSs
     where
       byName :: U.DataS -> Bool
-      byName U.DefaultBlueprintDataS  = False
-      byName U.DeviceDataS            = False
       byName (U.BlueprintDataS s _ _) = s == name
+      byName _                        = False
       wrap [] = Nothing
       wrap xs = Just xs
   isExistsBlueprint (TVarStore db) name = do

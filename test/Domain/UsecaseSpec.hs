@@ -85,3 +85,45 @@ spec = do
         (loadBlueprint db $ LoadBlueprintReq "untitled-1") `shouldReturn`
           (LoadBlueprintRes
              (Right (LoadBlueprintResData "untitled-1" "title1" "desc1")))
+    describe "loadDevice" $ do
+      it "return Device" $ do
+        db <- DT.defaultTVarStore
+        registDevice db $ RegistDeviceReq "device-1" "title1" "desc1"
+        registDevice db $ RegistDeviceReq "device-2" "title2" "desc2"
+        (loadDevice db $ LoadDeviceReq "device-1") `shouldReturn`
+          (LoadDeviceRes (Right (LoadDeviceResData "device-1" "title1" "desc1")))
+    describe "addDeviceToBlueprint" $
+      -- or return data and not save
+     do
+      it "add device to Blueprint" $ do
+        db <- DT.defaultTVarStore
+        registDevice db $ RegistDeviceReq "device-1" "title1" "desc1"
+        addBlueprint db $ AddBlueprintReq "untitled-1" "title" "desc"
+        (addDeviceToBlueprint db $
+         AddDeviceToBlueprintReq "device-1" "untitled-1") `shouldReturn`
+          (AddDeviceToBlueprintRes (Right "device-1:untitled-1"))
+      it "add 2 device to Blueprint" $ do
+        db <- DT.defaultTVarStore
+        registDevice db $ RegistDeviceReq "device-1" "title1" "desc1"
+        registDevice db $ RegistDeviceReq "device-2" "title2" "desc2"
+        addBlueprint db $ AddBlueprintReq "untitled-1" "title" "desc"
+        addDeviceToBlueprint db $
+          AddDeviceToBlueprintReq "device-1" "untitled-1"
+        (addDeviceToBlueprint db $
+         AddDeviceToBlueprintReq "device-2" "untitled-1") `shouldReturn`
+          (AddDeviceToBlueprintRes (Right "device-1:untitled-1"))
+        (loadBlueprint db $ LoadBlueprintReq "untitled-1") `shouldReturn`
+          (LoadBlueprintRes
+             (Right (LoadBlueprintResData "untitled-1" "title1" "desc1")))
+      it "add 2 same device to Blueprint" $ do
+        db <- DT.defaultTVarStore
+        registDevice db $ RegistDeviceReq "device-1" "title1" "desc1"
+        addBlueprint db $ AddBlueprintReq "untitled-1" "title" "desc"
+        addDeviceToBlueprint db $
+          AddDeviceToBlueprintReq "device-1" "untitled-1"
+        (addDeviceToBlueprint db $
+         AddDeviceToBlueprintReq "device-1" "untitled-1") `shouldReturn`
+          (AddDeviceToBlueprintRes (Right "device-1:untitled-1"))
+        (loadBlueprint db $ LoadBlueprintReq "untitled-1") `shouldReturn`
+          (LoadBlueprintRes
+             (Right (LoadBlueprintResData "untitled-1" "title1" "desc1")))
