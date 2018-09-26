@@ -34,16 +34,19 @@ module Domain.Usecase
   , createNewBlueprint
   , addBlueprint
   , loadBlueprint
+  , loadBlueprintMaybe
   , saveBlueprint
   , loadDevice
   , registDevice
   , addDeviceToBlueprint
   ) where
 
-import qualified Control.Exception.Safe as CES
-import qualified Control.Lens           as CL
-import qualified Domain.Blueprint       as B
-import qualified Domain.Device          as D
+import qualified Control.Exception.Safe    as CES
+import qualified Control.Lens              as CL
+import qualified Control.Monad.IO.Class    as CMIC
+import qualified Control.Monad.Trans.Maybe as CMTM
+import qualified Domain.Blueprint          as B
+import qualified Domain.Device             as D
 
 newtype USException =
   InsertException String
@@ -182,6 +185,17 @@ addBlueprint db req = do
       (B.bpName CL..~ name) . (B.bpTitle CL..~ title) . (B.bpDesc CL..~ desc) $
       B.defaultBlueprint
     blueprintDataS = fromBlueprint blueprint
+
+loadBlueprintMaybe ::
+     (Store a) => a -> LoadBlueprintReq -> IO (Maybe LoadBlueprintResData)
+loadBlueprintMaybe db req =
+  CMTM.runMaybeT $ do
+    fetched <- CMTM.MaybeT $ fetchBlueprintByName db name
+    let fetchedOne = head . map fromDataS $ fetched
+    CMIC.liftIO . print $ "fetched:" ++ show fetchedOne
+    return fetchedOne
+  where
+    name = _lbrName req
 
 loadBlueprint :: (Store a) => a -> LoadBlueprintReq -> IO LoadBlueprintRes
 loadBlueprint db req = do
