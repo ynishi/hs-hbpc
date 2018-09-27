@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE InstanceSigs         #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS -Wall -Werror -fno-warn-unused-binds #-}
@@ -73,6 +74,15 @@ instance U.Store TVarStore where
       byName _                        = False
       wrap [] = Nothing
       wrap xs = Just xs
+  fetchBlueprintByNameThrow (TVarStore db) name = do
+    dataSs <- CCSTM.readTVarIO db
+    case filter byName dataSs of
+      [] -> CES.throwM $ U.NotFoundException name
+      xs -> return xs
+    where
+      byName :: U.DataS -> Bool
+      byName (U.BlueprintDataS s _ _) = s == name
+      byName _                        = False
   isExistsBlueprint (TVarStore db) name = do
     ds <- CCSTM.readTVarIO db
     let ds' = map (\(U.BlueprintDataS bdsName _ _) -> bdsName == name) ds

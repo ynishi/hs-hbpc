@@ -48,8 +48,9 @@ import qualified Control.Monad.Trans.Maybe as CMTM
 import qualified Domain.Blueprint          as B
 import qualified Domain.Device             as D
 
-newtype USException =
-  InsertException String
+data USException
+  = InsertException String
+  | NotFoundException String
   deriving (Show)
 
 instance CES.Exception USException
@@ -348,5 +349,6 @@ class Store a where
   fetchDeviceIn :: a -> [D.Name] -> IO [DataS]
   fetchBlueprintBy :: a -> DataS -> IO (Maybe [DataS])
   fetchBlueprintByName :: a -> String -> IO (Maybe [DataS])
+  fetchBlueprintByNameThrow :: a -> String -> IO [DataS]
   isExistsDevice :: a -> DataS -> IO Bool
   isExistsBlueprint :: a -> String -> IO Bool
