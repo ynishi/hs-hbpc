@@ -1,0 +1,13 @@
+version: '2'
+
+vars:
+  REPO: ynishi/hs-hbpc-devel
+  WP: webpack
+  VERSION: 1
+
+tasks:
+  build:
+    desc: build docker image for devel
+    cmds:
+      - docker build -t {{.REPO}}:latest docker # --no-cache
+      - docker build -t {{.REPO}}:{{.VERSION}} docker 
