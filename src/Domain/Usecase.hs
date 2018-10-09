@@ -22,6 +22,8 @@ module Domain.Usecase
   , LoadDeviceRes(..)
   , LoadDeviceReq(..)
   , LoadDeviceResData(..)
+  , LoadDeviceByBlueprintRes(..)
+  , LoadDeviceByBlueprintReq(..)
   , RegistDeviceRes(..)
   , RegistDeviceReq(..)
   , SaveBlueprintRes(..)
@@ -37,6 +39,7 @@ module Domain.Usecase
   , loadBlueprintMaybe
   , saveBlueprint
   , loadDevice
+  , loadDeviceByBlueprint
   , registDevice
   , addDeviceToBlueprint
   ) where
@@ -81,6 +84,10 @@ newtype LoadDeviceReq = LoadDeviceReq
   { _ldrName :: String
   }
 
+newtype LoadDeviceByBlueprintReq = LoadDeviceByBlueprintReq
+  { _ldbbbrName :: String
+  }
+
 data RegistDeviceReq = RegistDeviceReq
   { _rdrName  :: String
   , _rdrTitle :: String
@@ -112,6 +119,10 @@ newtype LoadBlueprintRes =
 
 newtype LoadDeviceRes =
   LoadDeviceRes (Either String LoadDeviceResData)
+  deriving (Show, Eq)
+
+newtype LoadDeviceByBlueprintRes =
+  LoadDeviceByBlueprintRes (Either String LoadDeviceResData)
   deriving (Show, Eq)
 
 newtype RegistDeviceRes =
@@ -236,6 +247,16 @@ loadDevice db req = do
   where
     name = _ldrName req
 
+loadDeviceByBlueprint ::
+     (Store a) => a -> LoadDeviceByBlueprintReq -> IO LoadDeviceByBlueprintRes
+loadDeviceByBlueprint db req = do
+  fetched <- fetchDeviceByBlueprintName db name
+  case fetched of
+    []  -> return . LoadDeviceRes . Left $ "load:" ++ name
+    bps -> return . LoadDeviceRes . Right . head . map fromDataSToLDRD $ bps
+  where
+    name = _ldbbbrName req
+
 createBlueprint :: (Store a) => a -> Req -> IO Res
 createBlueprint _ Req = return Res
 createBlueprint _ (CreateDeviceReq _ _) = return Res
@@ -346,6 +367,7 @@ class Store a where
   updateBlueprint :: a -> DataS -> IO ()
   fetchAll :: a -> IO [DataS]
   fetchDeviceByName :: a -> D.Name -> IO [DataS]
+  fetchDeviceByBlueprintName :: a -> D.Name -> IO [DataS]
   fetchDeviceIn :: a -> [D.Name] -> IO [DataS]
   fetchBlueprintBy :: a -> DataS -> IO (Maybe [DataS])
   fetchBlueprintByName :: a -> String -> IO (Maybe [DataS])

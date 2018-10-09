@@ -59,6 +59,13 @@ instance U.Store TVarStore where
       byName :: U.DataS -> Bool
       byName (U.DeviceDataS dName _ _) = dName == name
       byName _                         = False
+  fetchDeviceByBlueprintName (TVarStore db) name = do
+    dataSs <- CCSTM.readTVarIO db
+    return . filter byName $ dataSs
+    where
+      byName :: U.DataS -> Bool
+      byName (U.DeviceDataS dName _ _) = dName == name
+      byName _                         = False
   fetchBlueprintBy (TVarStore db) ds = do
     dataSs <- CCSTM.readTVarIO db
     return . wrap $ filter (== ds) dataSs
