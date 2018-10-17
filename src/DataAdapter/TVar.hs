@@ -37,19 +37,28 @@ instance U.Store TVarStore where
   updateBlueprint (TVarStore db) ds = do
     dataSs <- CCSTM.readTVarIO db
     if U._bpdsName ds `elem`
-       map U._bpdsName (filter (\x -> U._bpdsName x /= "") dataSs)
+       map
+         U._bpdsName
+         (filter
+            (\x ->
+               case x of
+                 U.BlueprintDataS name _ _ _ -> name /= ""
+                 _                           -> False)
+            dataSs)
       then liftIO . atomically . CCSTM.modifyTVar db $
            map
              (\case
-                U.BlueprintDataS name title desc ->
+                U.BlueprintDataS name title desc devices ->
                   if name == U._bpdsName ds
                     then U.BlueprintDataS
                            name
                            (U._bpdsTitle ds)
                            (U._bpdsDesc ds)
-                    else U.BlueprintDataS name title desc
+                           (U._bpdsDevices ds)
+                    else U.BlueprintDataS name title desc devices
                 U.DefaultBlueprintDataS -> U.DefaultBlueprintDataS
-                U.DeviceDataS name title desc -> U.DeviceDataS name title desc)
+                U.DefaultDeviceDataS -> U.DefaultDeviceDataS
+                U.DeviceDataS name desc ifs -> U.DeviceDataS name desc ifs)
       else CES.throw $ U.InsertException "updateError"
   fetchDeviceIn _ _ = return []
   fetchDeviceByName (TVarStore db) name = do
@@ -77,8 +86,8 @@ instance U.Store TVarStore where
     return . wrap $ filter byName dataSs
     where
       byName :: U.DataS -> Bool
-      byName (U.BlueprintDataS s _ _) = s == name
-      byName _                        = False
+      byName (U.BlueprintDataS s _ _ _) = s == name
+      byName _                          = False
       wrap [] = Nothing
       wrap xs = Just xs
   fetchBlueprintByNameThrow (TVarStore db) name = do
@@ -88,11 +97,11 @@ instance U.Store TVarStore where
       xs -> return xs
     where
       byName :: U.DataS -> Bool
-      byName (U.BlueprintDataS s _ _) = s == name
-      byName _                        = False
+      byName (U.BlueprintDataS s _ _ _) = s == name
+      byName _                          = False
   isExistsBlueprint (TVarStore db) name = do
     ds <- CCSTM.readTVarIO db
-    let ds' = map (\(U.BlueprintDataS bdsName _ _) -> bdsName == name) ds
+    let ds' = map (\(U.BlueprintDataS bdsName _ _ _) -> bdsName == name) ds
     return $ or ds'
 
 defaultTVarStore :: IO TVarStore
