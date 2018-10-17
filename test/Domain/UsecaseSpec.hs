@@ -124,6 +124,14 @@ spec = do
           db
           (AddDeviceToBlueprintReq "device-1" "untitled-1") `shouldReturn`
           AddDeviceToBlueprintRes (Right "device-1:untitled-1")
+        loadBlueprint db (LoadBlueprintReq "untitled-1") `shouldReturn`
+          LoadBlueprintRes
+            (Right
+               (LoadBlueprintResData
+                  "untitled-1"
+                  "title"
+                  "desc"
+                  [LoadDeviceResData "device-1" "desc1" ["iface1"]]))
       it "add 2 device to Blueprint" $ do
         db2 <- DT.defaultTVarStore
         registDevice db2 $ RegistDeviceReq "device-1" "desc1" ["iface1"]
@@ -165,13 +173,3 @@ spec = do
                   [ LoadDeviceResData "device-1" "desc1" ["iface1"]
                   , LoadDeviceResData "device-1" "desc1" ["iface1"]
                   ]))
-    describe "loadDeviceByBlueprint" $ do
-      it "return Devices in Blueprint" $ do
-        db <- DT.defaultTVarStore
-        registDevice db $ RegistDeviceReq "device-1" "desc1" ["iface1"]
-        addBlueprint db $ AddBlueprintReq "untitled-1" "title" "desc"
-        addDeviceToBlueprint db $
-          AddDeviceToBlueprintReq "device-1" "untitled-1"
-        loadDeviceByBlueprint db (LoadDeviceByBlueprintReq "untitled-1") `shouldReturn`
-          LoadDeviceByBlueprintRes
-            (Right (LoadDeviceResData "device-1" "desc1" ["iface1"]))

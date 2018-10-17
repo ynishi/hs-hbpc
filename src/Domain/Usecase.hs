@@ -41,7 +41,6 @@ module Domain.Usecase
   , loadBlueprintMaybe
   , saveBlueprint
   , loadDevice
-  , loadDeviceByBlueprint
   , registDevice
   , addDeviceToBlueprint
   ) where
@@ -250,18 +249,6 @@ loadDevice db req = do
   where
     name = _ldrName req
 
-loadDeviceByBlueprint ::
-     (Store a) => a -> LoadDeviceByBlueprintReq -> IO LoadDeviceByBlueprintRes
-loadDeviceByBlueprint db req = do
-  fetched <- fetchDeviceByBlueprintName db name
-  case fetched of
-    [] -> return . LoadDeviceByBlueprintRes . Left $ "load:" ++ name
-    bps ->
-      return . LoadDeviceByBlueprintRes . Right . head . map fromDataSToLDRD $
-      bps
-  where
-    name = _ldbbbrName req
-
 createBlueprint :: (Store a) => a -> Req -> IO Res
 createBlueprint _ Req = return Res
 createBlueprint _ (CreateDeviceReq _ _) = return Res
@@ -315,8 +302,7 @@ addDeviceToBlueprint st (AddDeviceToBlueprintReq deviceName blueprintName) = do
               blueprintName
             Right _ ->
               return . AddDeviceToBlueprintRes . Right $ deviceName ++ ":" ++
-              blueprintName ++
-              (concat $ map (_ddsName) $ _bpdsDevices blueprintDataS')
+              blueprintName
 
 -- for Data store
 data DataS
@@ -336,7 +322,12 @@ defaultDeviceDataS :: DataS
 defaultDeviceDataS = DeviceDataS {_ddsName = "", _ddsDesc = "", _ddsIfaces = []}
 
 fromDeviceDataS :: DataS -> D.Device
-fromDeviceDataS _ = D.defaultDevice
+fromDeviceDataS dataS =
+  D.defaultDevice
+    { D._deviceName = _ddsName dataS
+    , D._deviceDesc = _ddsDesc dataS
+    , D._deviceIfaces = _ddsIfaces dataS
+    }
 
 fromDevice :: D.Device -> DataS
 fromDevice device =
@@ -385,7 +376,6 @@ class Store a where
   updateBlueprint :: a -> DataS -> IO ()
   fetchAll :: a -> IO [DataS]
   fetchDeviceByName :: a -> D.Name -> IO [DataS]
-  fetchDeviceByBlueprintName :: a -> D.Name -> IO [DataS]
   fetchDeviceIn :: a -> [D.Name] -> IO [DataS]
   fetchBlueprintBy :: a -> DataS -> IO (Maybe [DataS])
   fetchBlueprintByName :: a -> String -> IO (Maybe [DataS])
