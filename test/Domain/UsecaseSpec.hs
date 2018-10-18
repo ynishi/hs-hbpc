@@ -186,3 +186,4 @@ spec = do
           db
           (LinkDeviceReq "untitled-1" "iface1" "device-1" "device-2") `shouldReturn`
           LinkDeviceRes (Right "untitled-1:iface1:device-1:device-2")
+        -- TODO check is linked from store
