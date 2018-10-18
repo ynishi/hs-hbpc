@@ -18,6 +18,8 @@ module Domain.Usecase
   , AddBlueprintReq(..)
   , AddDeviceToBlueprintRes(..)
   , AddDeviceToBlueprintReq(..)
+  , LinkDeviceRes(..)
+  , LinkDeviceReq(..)
   , LoadBlueprintRes(..)
   , LoadBlueprintReq(..)
   , LoadBlueprintResData(..)
@@ -37,6 +39,7 @@ module Domain.Usecase
   , createBlueprint
   , createNewBlueprint
   , addBlueprint
+  , linkDevice
   , loadBlueprint
   , loadBlueprintMaybe
   , saveBlueprint
@@ -49,6 +52,7 @@ import qualified Control.Exception.Safe    as CES
 import qualified Control.Lens              as CL
 import qualified Control.Monad.IO.Class    as CMIC
 import qualified Control.Monad.Trans.Maybe as CMTM
+import qualified Data.List                 as List
 import qualified Domain.Blueprint          as B
 import qualified Domain.Device             as D
 
@@ -75,6 +79,13 @@ data AddBlueprintReq = AddBlueprintReq
   { _adrName  :: String
   , _adrTitle :: String
   , _adrDesc  :: String
+  }
+
+data LinkDeviceReq = LinkDeviceReq
+  { _lidrBlueprint :: String
+  , _lidrIface     :: String
+  , _lidrDeviceX   :: String
+  , _lidrDeviceY   :: String
   }
 
 newtype LoadBlueprintReq = LoadBlueprintReq
@@ -112,6 +123,10 @@ newtype CreateNewBlueprintRes = CreateNewBlueprintRes
 
 newtype AddBlueprintRes =
   AddBlueprintRes (Either String String)
+  deriving (Show, Eq)
+
+newtype LinkDeviceRes =
+  LinkDeviceRes (Either String String)
   deriving (Show, Eq)
 
 newtype LoadBlueprintRes =
@@ -199,6 +214,43 @@ addBlueprint db req = do
       (B.bpName CL..~ name) . (B.bpTitle CL..~ title) . (B.bpDesc CL..~ desc) $
       B.defaultBlueprint
     blueprintDataS = fromBlueprint blueprint
+
+linkDevice :: (Store a) => a -> LinkDeviceReq -> IO LinkDeviceRes
+linkDevice db req = do
+  fetchedBp <- fetchBlueprintByName db bpName
+  fetchedDev1 <- fetchDeviceByName db d1Name
+  fetchedDev2 <- fetchDeviceByName db d2Name
+  case fetchedBp of
+    Nothing -> return . LinkDeviceRes . Left $ "not found:" ++ bpName
+    Just bpl -> do
+      case fetchedDev1 of
+        [] -> return . LinkDeviceRes . Left $ "not found:" ++ d1Name
+        (fdl1:_) -> do
+          case fetchedDev2 of
+            [] -> return . LinkDeviceRes . Left $ "not found:" ++ d2Name
+            (fdl2:_) -> do
+              let fd1 = fromDeviceDataS fdl1
+              let fd2 = fromDeviceDataS fdl2
+              let bp = fromBlueprintDataS . head $ bpl
+              if List.elem iface (fd1 CL.^. D.deviceIfaces)
+                then if List.elem iface (fd2 CL.^. D.deviceIfaces)
+                       then do
+                         let linked = B.link fd1 fd2 iface bp
+                         return . LinkDeviceRes . Right $ (B._bpName bp) ++ ":" ++
+                           iface ++
+                           ":" ++
+                           d1Name ++
+                           ":" ++
+                           d2Name
+                       else return . LinkDeviceRes . Left $ "not had:" ++ d2Name ++
+                            iface
+                else return . LinkDeviceRes . Left $ "not had:" ++ d1Name ++
+                     iface
+  where
+    bpName = _lidrBlueprint req
+    d1Name = _lidrDeviceX req
+    d2Name = _lidrDeviceY req
+    iface = _lidrIface req
 
 loadBlueprintMaybe ::
      (Store a) => a -> LoadBlueprintReq -> IO (Maybe LoadBlueprintResData)

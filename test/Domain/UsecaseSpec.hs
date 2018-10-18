@@ -173,3 +173,16 @@ spec = do
                   [ LoadDeviceResData "device-1" "desc1" ["iface1"]
                   , LoadDeviceResData "device-1" "desc1" ["iface1"]
                   ]))
+      it "link 2 device have same iface" $ do
+        db <- DT.defaultTVarStore
+        registDevice db $ RegistDeviceReq "device-1" "desc1" ["iface1"]
+        registDevice db $ RegistDeviceReq "device-2" "desc2" ["iface1"]
+        addBlueprint db $ AddBlueprintReq "untitled-1" "title" "desc"
+        addDeviceToBlueprint db $
+          AddDeviceToBlueprintReq "device-1" "untitled-1"
+        addDeviceToBlueprint db $
+          AddDeviceToBlueprintReq "device-2" "untitled-1"
+        linkDevice
+          db
+          (LinkDeviceReq "untitled-1" "iface1" "device-1" "device-2") `shouldReturn`
+          LinkDeviceRes (Right "untitled-1:iface1:device-1:device-2")

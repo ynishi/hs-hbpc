@@ -12,6 +12,7 @@ module Domain.Blueprint
   , bpTitle
   , defaultBlueprint
   , empty
+  , link
   ) where
 
 import qualified Algebra.Graph   as AG
@@ -54,3 +55,8 @@ addDevice device = (bpDevices CL.%~ (device :)) . (bpGraphs CL.%~ updateGraphs)
         (\graphs' protocol -> Map.insertWith AG.overlay protocol ver graphs')
         graphs
         ps
+
+link :: D.Device -> D.Device -> String -> Blueprint -> Blueprint
+link device1 device2 iface = bpGraphs CL.%~ updateGraphs
+  where
+    updateGraphs graphs = Map.update (\x -> Just x) iface graphs
