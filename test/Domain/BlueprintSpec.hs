@@ -44,3 +44,58 @@ spec = do
       it "view _bpDevices" $ defaultBlueprint ^. bpDevices `shouldBe` []
     describe "bpGraphs" $
       it "preview _bpGraphs" $ defaultBlueprint ^. bpGraphs `shouldBe` Map.empty
+  describe "link" $ do
+    it "link 2 device in Blueprint" $ do
+      let iface = "tcpip"
+      let device1 = defaultDevice {_deviceName = "d1", _deviceIfaces = [iface]}
+      let device2 = defaultDevice {_deviceName = "d2", _deviceIfaces = [iface]}
+      let bp = addDevice device2 . addDevice device1 $ defaultBlueprint
+      link device1 device2 iface bp `shouldBe`
+        Blueprint
+          { _bpName = ""
+          , _bpTitle = ""
+          , _bpDesc = ""
+          , _bpDevices =
+              [ Device
+                  { _deviceName = "d2"
+                  , _deviceDesc = ""
+                  , _deviceIfaces = ["tcpip"]
+                  }
+              , Device
+                  { _deviceName = "d1"
+                  , _deviceDesc = ""
+                  , _deviceIfaces = ["tcpip"]
+                  }
+              ]
+          , _bpGraphs =
+              Map.fromList
+                [ ( "tcpip"
+                  , AG.Overlay
+                      (AG.Connect
+                         (AG.Vertex
+                            (Device
+                               { _deviceName = "d1"
+                               , _deviceDesc = ""
+                               , _deviceIfaces = ["tcpip"]
+                               }))
+                         (AG.Vertex
+                            (Device
+                               { _deviceName = "d2"
+                               , _deviceDesc = ""
+                               , _deviceIfaces = ["tcpip"]
+                               })))
+                      (AG.Overlay
+                         (AG.Vertex
+                            (Device
+                               { _deviceName = "d2"
+                               , _deviceDesc = ""
+                               , _deviceIfaces = ["tcpip"]
+                               }))
+                         (AG.Vertex
+                            (Device
+                               { _deviceName = "d1"
+                               , _deviceDesc = ""
+                               , _deviceIfaces = ["tcpip"]
+                               }))))
+                ]
+          }

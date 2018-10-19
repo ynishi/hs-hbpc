@@ -59,4 +59,10 @@ addDevice device = (bpDevices CL.%~ (device :)) . (bpGraphs CL.%~ updateGraphs)
 link :: D.Device -> D.Device -> String -> Blueprint -> Blueprint
 link device1 device2 iface = bpGraphs CL.%~ updateGraphs
   where
-    updateGraphs graphs = Map.update (\x -> Just x) iface graphs
+    updateGraphs graphs =
+      Map.update
+        (\graph -> do
+           let e = AG.edge device1 device2
+           Just $ AG.overlay e graph)
+        iface
+        graphs
