@@ -29,6 +29,7 @@ instance U.Store TVarStore where
     return isExist
   storeDevice = U.store
   storeBlueprint = U.store
+  storeLink = U.store
   insertBlueprint (TVarStore db) ds = do
     dataSs <- CCSTM.readTVarIO db
     if ds `elem` dataSs
@@ -58,7 +59,8 @@ instance U.Store TVarStore where
                     else U.BlueprintDataS name title desc devices
                 U.DefaultBlueprintDataS -> U.DefaultBlueprintDataS
                 U.DefaultDeviceDataS -> U.DefaultDeviceDataS
-                U.DeviceDataS name desc ifs -> U.DeviceDataS name desc ifs)
+                U.DeviceDataS name desc ifs -> U.DeviceDataS name desc ifs
+                U.LinkDataS name iface devices -> U.LinkDataS name iface devices)
       else CES.throw $ U.InsertException "updateError"
   fetchDeviceIn _ _ = return []
   fetchDeviceByName (TVarStore db) name = do
@@ -68,6 +70,21 @@ instance U.Store TVarStore where
       byName :: U.DataS -> Bool
       byName (U.DeviceDataS dName _ _) = dName == name
       byName _                         = False
+  fetchDeviceByNameMaybe (TVarStore db) name = do
+    dataSs <- CCSTM.readTVarIO db
+    return . wrap $ filter byName dataSs
+    where
+      byName :: U.DataS -> Bool
+      byName (U.DeviceDataS dName _ _) = dName == name
+      byName _                         = False
+      wrap [] = Nothing
+      wrap xs = Just xs
+  fetchLinkByName (TVarStore db) name = do
+    dataSs <- CCSTM.readTVarIO db
+    return . filter byName $ dataSs
+    where
+      byName (U.LinkDataS dName _ _) = dName == name
+      byName _                       = False
   fetchBlueprintBy (TVarStore db) ds = do
     dataSs <- CCSTM.readTVarIO db
     return . wrap $ filter (== ds) dataSs

@@ -28,6 +28,9 @@ module Domain.Usecase
   , LoadDeviceResData(..)
   , LoadDeviceByBlueprintRes(..)
   , LoadDeviceByBlueprintReq(..)
+  , LoadLinkRes(..)
+  , LoadLinkReq(..)
+  , LoadLinkResData(..)
   , RegistDeviceRes(..)
   , RegistDeviceReq(..)
   , SaveBlueprintRes(..)
@@ -40,6 +43,7 @@ module Domain.Usecase
   , createNewBlueprint
   , addBlueprint
   , linkDevice
+  , loadLink
   , loadBlueprint
   , loadBlueprintMaybe
   , saveBlueprint
@@ -48,11 +52,13 @@ module Domain.Usecase
   , addDeviceToBlueprint
   ) where
 
+import qualified Algebra.Graph             as AG
 import qualified Control.Exception.Safe    as CES
 import qualified Control.Lens              as CL
 import qualified Control.Monad.IO.Class    as CMIC
 import qualified Control.Monad.Trans.Maybe as CMTM
 import qualified Data.List                 as List
+import qualified Data.Map.Strict           as Map
 import qualified Domain.Blueprint          as B
 import qualified Domain.Device             as D
 
@@ -100,6 +106,11 @@ newtype LoadDeviceByBlueprintReq = LoadDeviceByBlueprintReq
   { _ldbbbrName :: String
   }
 
+data LoadLinkReq = LoadLinkReq
+  { _llrName  :: String
+  , _llrIFace :: String
+  }
+
 data RegistDeviceReq = RegistDeviceReq
   { _rdrName   :: String
   , _rdrDesc   :: String
@@ -141,6 +152,10 @@ newtype LoadDeviceByBlueprintRes =
   LoadDeviceByBlueprintRes (Either String LoadDeviceResData)
   deriving (Show, Eq)
 
+newtype LoadLinkRes =
+  LoadLinkRes (Either String LoadLinkResData)
+  deriving (Show, Eq)
+
 newtype RegistDeviceRes =
   RegistDeviceRes (Either String String)
   deriving (Show, Eq)
@@ -166,6 +181,13 @@ data LoadDeviceResData
   | LoadDeviceResData { _ldrdName   :: String
                       , _ldrdDesc   :: String
                       , _ldrdIfaces :: [String] }
+  deriving (Show, Eq)
+
+data LoadLinkResData
+  = LoadLinkResDataEmpty
+  | LoadLinkResData { _llrdName   :: String
+                    , _llrdIface  :: String
+                    , _llrdDevice :: [String] }
   deriving (Show, Eq)
 
 data Res
@@ -215,6 +237,27 @@ addBlueprint db req = do
       B.defaultBlueprint
     blueprintDataS = fromBlueprint blueprint
 
+linkDeviceMaybe :: Store a => a -> LinkDeviceReq -> IO (Maybe LinkDeviceRes)
+linkDeviceMaybe db req = do
+  CMTM.runMaybeT $ do
+    fetchedBp <- CMTM.MaybeT $ fetchBlueprintByName db bpName
+    let bp = head . map fromBlueprintDataS $ fetchedBp
+    fetchedD1 <- CMTM.MaybeT $ fetchDeviceByNameMaybe db d1Name
+    let d1 = head . map fromDeviceDataS $ fetchedD1
+    fetchedD2 <- CMTM.MaybeT $ fetchDeviceByNameMaybe db d2Name
+    let d2 = head . map fromDeviceDataS $ fetchedD2
+    let linked = B.link d1 d2 iface bp
+    CMIC.liftIO . storeLink db . fromBlueprintToLinkDataS linked $ iface
+    return . LinkDeviceRes . Right $ (B._bpName bp) ++ ":" ++ iface ++ ":" ++
+      d1Name ++
+      ":" ++
+      d2Name
+  where
+    bpName = _lidrBlueprint req
+    d1Name = _lidrDeviceX req
+    d2Name = _lidrDeviceY req
+    iface = _lidrIface req
+
 linkDevice :: (Store a) => a -> LinkDeviceReq -> IO LinkDeviceRes
 linkDevice db req = do
   fetchedBp <- fetchBlueprintByName db bpName
@@ -236,6 +279,7 @@ linkDevice db req = do
                 then if List.elem iface (fd2 CL.^. D.deviceIfaces)
                        then do
                          let linked = B.link fd1 fd2 iface bp
+                         storeLink db . fromBlueprintToLinkDataS linked $ iface
                          return . LinkDeviceRes . Right $ (B._bpName bp) ++ ":" ++
                            iface ++
                            ":" ++
@@ -300,6 +344,15 @@ loadDevice db req = do
     bps -> return . LoadDeviceRes . Right . head . map fromDataSToLDRD $ bps
   where
     name = _ldrName req
+
+loadLink :: (Store a) => a -> LoadLinkReq -> IO LoadLinkRes
+loadLink db req = do
+  fetched <- fetchLinkByName db name
+  case fetched of
+    []    -> return . LoadLinkRes $ Left $ "load:" ++ name
+    links -> return . LoadLinkRes $ Right . head . map fromDataSToLLR $ links
+  where
+    name = _llrName req
 
 createBlueprint :: (Store a) => a -> Req -> IO Res
 createBlueprint _ Req = return Res
@@ -367,6 +420,9 @@ data DataS
   | DeviceDataS { _ddsName   :: String
                 , _ddsDesc   :: String
                 , _ddsIfaces :: [String] }
+  | LinkDataS { _ldsName    :: String
+              , _ldsIface   :: String
+              , _ldsDevices :: [String] }
   deriving (Show, Eq)
 
 -- CL.makeLenses ''DataS
@@ -398,6 +454,17 @@ fromBlueprint blueprint =
     , _bpdsDevices = map fromDevice $ (blueprint CL.^. B.bpDevices)
     }
 
+-- TODO Devices
+fromBlueprintToLinkDataS :: B.Blueprint -> String -> DataS
+fromBlueprintToLinkDataS blueprint iface =
+  LinkDataS
+    { _ldsName = blueprint CL.^. B.bpName
+    , _ldsIface = iface
+    , _ldsDevices =
+        map show $ AG.edgeList $
+        Map.findWithDefault AG.empty iface (blueprint CL.^. B.bpGraphs)
+    }
+
 fromBlueprintDataS :: DataS -> B.Blueprint
 fromBlueprintDataS dataS =
   B.defaultBlueprint
@@ -420,17 +487,25 @@ fromDataSToLDRD (DeviceDataS name desc ifaces) =
   LoadDeviceResData name desc ifaces
 fromDataSToLDRD _ = LoadDeviceResDataEmpty
 
+fromDataSToLLR :: DataS -> LoadLinkResData
+fromDataSToLLR (LinkDataS name iface devices) =
+  LoadLinkResData name iface devices
+fromDataSToLLR _ = LoadLinkResDataEmpty
+
 class Store a where
   store :: a -> DataS -> IO ()
   storeDevice :: a -> DataS -> IO ()
   storeBlueprint :: a -> DataS -> IO ()
+  storeLink :: a -> DataS -> IO ()
   insertBlueprint :: a -> DataS -> IO ()
   updateBlueprint :: a -> DataS -> IO ()
   fetchAll :: a -> IO [DataS]
   fetchDeviceByName :: a -> D.Name -> IO [DataS]
+  fetchDeviceByNameMaybe :: a -> D.Name -> IO (Maybe [DataS])
   fetchDeviceIn :: a -> [D.Name] -> IO [DataS]
   fetchBlueprintBy :: a -> DataS -> IO (Maybe [DataS])
   fetchBlueprintByName :: a -> String -> IO (Maybe [DataS])
   fetchBlueprintByNameThrow :: a -> String -> IO [DataS]
+  fetchLinkByName :: a -> String -> IO [DataS]
   isExistsDevice :: a -> DataS -> IO Bool
   isExistsBlueprint :: a -> String -> IO Bool
