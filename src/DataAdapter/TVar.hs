@@ -83,6 +83,7 @@ instance U.Store TVarStore where
     dataSs <- CCSTM.readTVarIO db
     return . filter byName $ dataSs
     where
+      byName :: U.DataS -> Bool
       byName (U.LinkDataS dName _ _) = dName == name
       byName _                       = False
   fetchBlueprintBy (TVarStore db) ds = do

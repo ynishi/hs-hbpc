@@ -43,6 +43,7 @@ module Domain.Usecase
   , createNewBlueprint
   , addBlueprint
   , linkDevice
+  , linkDeviceMaybe
   , loadLink
   , loadBlueprint
   , loadBlueprintMaybe
@@ -153,7 +154,7 @@ newtype LoadDeviceByBlueprintRes =
   deriving (Show, Eq)
 
 newtype LoadLinkRes =
-  LoadLinkRes (Either String LoadLinkResData)
+  LoadLinkRes (Either String [LoadLinkResData])
   deriving (Show, Eq)
 
 newtype RegistDeviceRes =
@@ -251,7 +252,11 @@ linkDeviceMaybe db req = do
     return . LinkDeviceRes . Right $ (B._bpName bp) ++ ":" ++ iface ++ ":" ++
       d1Name ++
       ":" ++
-      d2Name
+      d2Name ++
+      "linked:" ++
+      (show linked) ++
+      "::bp:" ++
+      (show bp)
   where
     bpName = _lidrBlueprint req
     d1Name = _lidrDeviceX req
@@ -350,9 +355,11 @@ loadLink db req = do
   fetched <- fetchLinkByName db name
   case fetched of
     []    -> return . LoadLinkRes $ Left $ "load:" ++ name
-    links -> return . LoadLinkRes $ Right . head . map fromDataSToLLR $ links
+    links -> return . LoadLinkRes $ Right . map fromDataSToLLR $ links
   where
     name = _llrName req
+    iface = _llrIFace req
+    fiface x = (_llrdIface x) == iface
 
 createBlueprint :: (Store a) => a -> Req -> IO Res
 createBlueprint _ Req = return Res
@@ -400,6 +407,9 @@ addDeviceToBlueprint st (AddDeviceToBlueprintReq deviceName blueprintName) = do
           let blueprintInstance = fromBlueprintDataS blueprintRes
           let blueprint' = B.addDevice deviceInstance blueprintInstance
           let blueprintDataS' = fromBlueprint blueprint'
+          let iface = head . D._deviceIfaces $ deviceInstance
+          let linkDataS = fromBlueprintToLinkDataS blueprint' iface
+          storeLink st linkDataS
           resultUpdate <- CES.try $ updateBlueprint st blueprintDataS'
           case resultUpdate of
             Left (_ :: USException) ->
@@ -407,7 +417,11 @@ addDeviceToBlueprint st (AddDeviceToBlueprintReq deviceName blueprintName) = do
               blueprintName
             Right _ ->
               return . AddDeviceToBlueprintRes . Right $ deviceName ++ ":" ++
-              blueprintName
+              blueprintName ++
+              ":linkdataS" ++
+              (show linkDataS) ++
+              ":iface:" ++
+              iface
 
 -- for Data store
 data DataS
@@ -461,8 +475,8 @@ fromBlueprintToLinkDataS blueprint iface =
     { _ldsName = blueprint CL.^. B.bpName
     , _ldsIface = iface
     , _ldsDevices =
-        map show $ AG.edgeList $
-        Map.findWithDefault AG.empty iface (blueprint CL.^. B.bpGraphs)
+        map show . AG.edgeList . Map.findWithDefault AG.empty iface $ blueprint CL.^.
+        B.bpGraphs
     }
 
 fromBlueprintDataS :: DataS -> B.Blueprint
