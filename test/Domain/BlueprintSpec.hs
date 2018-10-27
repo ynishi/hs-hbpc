@@ -19,19 +19,20 @@ spec = do
       { _bpName = "blueprint"
       , _bpTitle = "bp title"
       , _bpDesc = "bp desc"
-      , _bpDevices = []
+      , _bpDevices = Map.empty
       , _bpGraphs = Map.empty
       } `shouldBe`
-    Blueprint "blueprint" "bp title" "bp desc" [] Map.empty
+    Blueprint "blueprint" "bp title" "bp desc" Map.empty Map.empty
   describe "defaultBlueprint" $
     it "returns default value" $
-    defaultBlueprint `shouldBe` Blueprint "" "" "" [] Map.empty
+    defaultBlueprint `shouldBe` Blueprint "" "" "" Map.empty Map.empty
   describe "addDevice" $
     context "when default value" $ do
       let testBp = addDevice defaultDevice defaultBlueprint
       it "add device to _bpDevices" $
         (testBp ^. bpDevices) `shouldBe`
-        [Device {_deviceName = "", _deviceDesc = "", _deviceIfaces = []}]
+        Map.fromList
+          [(1, Device {_deviceName = "", _deviceDesc = "", _deviceIfaces = []})]
       it "add device to _bpGraphs" $ (testBp ^. bpGraphs) `shouldBe` Map.empty
   describe "lens getter" $ do
     describe "bpName" $
@@ -41,61 +42,37 @@ spec = do
     describe "bpDesc" $
       it "view _bpDesc" $ defaultBlueprint ^. bpDesc `shouldBe` ""
     describe "bpDevices" $
-      it "view _bpDevices" $ defaultBlueprint ^. bpDevices `shouldBe` []
+      it "view _bpDevices" $ defaultBlueprint ^. bpDevices `shouldBe` Map.empty
     describe "bpGraphs" $
       it "preview _bpGraphs" $ defaultBlueprint ^. bpGraphs `shouldBe` Map.empty
-  describe "link" $ do
+  describe "link" $
     it "link 2 device in Blueprint" $ do
       let iface = "tcpip"
       let device1 = defaultDevice {_deviceName = "d1", _deviceIfaces = [iface]}
       let device2 = defaultDevice {_deviceName = "d2", _deviceIfaces = [iface]}
       let bp = addDevice device2 . addDevice device1 $ defaultBlueprint
-      link device1 device2 iface bp `shouldBe`
+      let d1Id = head . Map.keys . _bpDevices $ bp
+      let d2Id = Map.keys (_bpDevices bp) !! 1
+      link d1Id d2Id iface bp `shouldBe`
         Blueprint
           { _bpName = ""
           , _bpTitle = ""
           , _bpDesc = ""
           , _bpDevices =
-              [ Device
-                  { _deviceName = "d2"
-                  , _deviceDesc = ""
-                  , _deviceIfaces = ["tcpip"]
-                  }
-              , Device
-                  { _deviceName = "d1"
-                  , _deviceDesc = ""
-                  , _deviceIfaces = ["tcpip"]
-                  }
-              ]
-          , _bpGraphs =
               Map.fromList
-                [ ( "tcpip"
-                  , AG.Overlay
-                      (AG.Connect
-                         (AG.Vertex
-                            (Device
-                               { _deviceName = "d1"
-                               , _deviceDesc = ""
-                               , _deviceIfaces = ["tcpip"]
-                               }))
-                         (AG.Vertex
-                            (Device
-                               { _deviceName = "d2"
-                               , _deviceDesc = ""
-                               , _deviceIfaces = ["tcpip"]
-                               })))
-                      (AG.Overlay
-                         (AG.Vertex
-                            (Device
-                               { _deviceName = "d2"
-                               , _deviceDesc = ""
-                               , _deviceIfaces = ["tcpip"]
-                               }))
-                         (AG.Vertex
-                            (Device
-                               { _deviceName = "d1"
-                               , _deviceDesc = ""
-                               , _deviceIfaces = ["tcpip"]
-                               }))))
+                [ ( 1
+                  , Device
+                      { _deviceName = "d1"
+                      , _deviceDesc = ""
+                      , _deviceIfaces = ["tcpip"]
+                      })
+                , ( 2
+                  , Device
+                      { _deviceName = "d2"
+                      , _deviceDesc = ""
+                      , _deviceIfaces = ["tcpip"]
+                      })
                 ]
+          , _bpGraphs =
+              Map.fromList [("tcpip", AG.Connect (AG.Vertex 1) (AG.Vertex 2))]
           }

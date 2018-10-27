@@ -28,6 +28,7 @@ module Domain.Usecase
   , LoadDeviceResData(..)
   , LoadDeviceByBlueprintRes(..)
   , LoadDeviceByBlueprintReq(..)
+  , LoadGraphResData(..)
   , RegistDeviceRes(..)
   , RegistDeviceReq(..)
   , SaveBlueprintRes(..)
@@ -345,9 +346,7 @@ addDeviceToBlueprint st (AddDeviceToBlueprintReq deviceName blueprintName) = do
               blueprintName
             Right _ ->
               return . AddDeviceToBlueprintRes . Right $ deviceName ++ ":" ++
-              blueprintName ++
-              ":iface:" ++
-              iface
+              blueprintName
 
 -- for Data store
 data DataS

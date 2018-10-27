@@ -59,7 +59,7 @@ addDevice device blueprint =
   (bpDevices CL.%~ updateDevice) . (bpGraphs CL.%~ updateGraphs) $ blueprint
   where
     ps = device CL.^. D.deviceIfaces
-    deviceId = (+ 1) . maximum . Map.keys $ _bpDevices blueprint
+    deviceId = (+ 1) . maximum . (0 :) . Map.keys $ _bpDevices blueprint
     ver = AG.vertex deviceId
     updateGraphs graphs =
       foldl
