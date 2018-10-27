@@ -36,6 +36,9 @@ dependencies:
 - resourcet
 - monad-logger
 - transformers
+- safe-exceptions
+- MissingH
+- either
 
 library:
   source-dirs: src

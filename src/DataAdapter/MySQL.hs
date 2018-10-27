@@ -39,15 +39,15 @@ instance U.Store MysqlStore where
   store (MysqlStore ci) ds = return ()
   fetchAll (MysqlStore ci) = do
     rows <- runDB ci getAll
-    return . replicate (length rows) $ U.BlueprintDataS
+    return . replicate (length rows) $ U.DefaultBlueprintDataS
     where
       getAll :: MonadIO m => ReaderT SqlBackend m [Entity Blueprint]
       getAll = rawSql "select ?? from Blueprint" []
   isExistsDevice (MysqlStore ci) ds = return True
   storeDevice _ _ = return ()
-  saveBlueprint _ _ = return ()
+  storeBlueprint _ _ = return ()
   fetchDeviceIn _ _ = return []
-  fetchDeviceBy _ _ = return U.DeviceDataS
+  fetchDeviceByName _ _ = return []
 
 defaultConnectInfo :: ConnectInfo
 defaultConnectInfo =
